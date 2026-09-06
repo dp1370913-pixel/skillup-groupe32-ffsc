@@ -1,8 +1,10 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'data/datasources/progress_local_datasource.dart';
 import 'data/models/progress_model.dart';
+import 'firebase_options.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -11,8 +13,7 @@ Future<void> main() async {
   Hive.registerAdapter(ProgressModelAdapter());
   await ProgressLocalDataSource.openBox();
 
-  // TODO(feature/auth): once Firebase est configuré par le module Auth,
-  // ajouter ici `await Firebase.initializeApp(...)` avant runApp.
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   runApp(const MyApp());
 }

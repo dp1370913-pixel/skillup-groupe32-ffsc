@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "795117756667",
+    "project_id": "skillup-groupe32",
+    "storage_bucket": "skillup-groupe32.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:795117756667:android:244d1fcee9966a0310905e",
+        "android_client_info": {
+          "package_name": "com.groupe32.skillup.skillup"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCtOKfyYiDCLV1iJcZ0DYRQSJkO1IyAgNM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

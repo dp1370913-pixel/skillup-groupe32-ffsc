@@ -31,3 +31,4 @@ doc/api/
 # IDE
 .idea/
 *.iml
+CLAUDE.md

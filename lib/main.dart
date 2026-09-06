@@ -1,10 +1,13 @@
+// lib/main.dart
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
+import 'core/theme/app_theme.dart';
 import 'data/datasources/progress_local_datasource.dart';
 import 'data/models/progress_model.dart';
 import 'firebase_options.dart';
+import 'presentation/courses/courses_list_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,23 +28,12 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'SkillUp',
-      theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple)),
-      home: const MyHomePage(title: 'SkillUp'),
-    );
-  }
-}
-
-class MyHomePage extends StatelessWidget {
-  const MyHomePage({super.key, required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: const Center(
-        child: Text('SkillUp — Groupe 32'),
+      theme: AppTheme.light,
+      home: CoursesListScreen(
+        onCourseSelected: (course) {
+          // Placeholder : brancher l'écran détail ici plus tard.
+          debugPrint('Cours sélectionné : ${course.id} — ${course.title}');
+        },
       ),
     );
   }

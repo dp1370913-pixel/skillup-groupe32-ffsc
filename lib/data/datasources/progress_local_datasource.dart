@@ -29,4 +29,8 @@ class ProgressLocalDataSource {
   List<ProgressModel> getPendingSync() {
     return _box.values.where((m) => m.pendingSync).toList();
   }
+
+  ProgressModel? get({required String courseId, required String lessonId}) {
+    return _box.get(ProgressModel.keyFor(courseId: courseId, lessonId: lessonId));
+  }
 }

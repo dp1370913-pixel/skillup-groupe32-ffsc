@@ -10,7 +10,9 @@ import 'data/models/progress_model.dart';
 import 'data/repositories/auth_repository_impl.dart';
 import 'data/repositories/progress_repository_impl.dart';
 import 'data/repositories/progress_sync_coordinator.dart';
+import 'domain/repositories/progress_repository.dart';
 import 'firebase_options.dart';
+import 'presentation/progress/progress_scope.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,18 +36,23 @@ Future<void> main() async {
     connectivityService: ConnectivityService(),
   ).start();
 
-  runApp(const MyApp());
+  runApp(MyApp(progressRepository: progressRepository));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({super.key, required this.progressRepository});
+
+  final ProgressRepository progressRepository;
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'SkillUp',
-      theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple)),
-      home: const MyHomePage(title: 'SkillUp'),
+    return ProgressScope(
+      repository: progressRepository,
+      child: MaterialApp(
+        title: 'SkillUp',
+        theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple)),
+        home: const MyHomePage(title: 'SkillUp'),
+      ),
     );
   }
 }

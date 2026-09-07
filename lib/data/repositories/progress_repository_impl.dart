@@ -63,4 +63,29 @@ class ProgressRepositoryImpl implements ProgressRepository {
       await local.save(synced);
     }
   }
+
+  @override
+  Future<void> pullFromRemote() async {
+    final uid = authRepository.currentUser?.uid;
+    if (uid == null) return;
+
+    final remoteEntries = await remote.fetchAll(uid: uid);
+    for (final remoteModel in remoteEntries) {
+      final localModel = local.get(
+        courseId: remoteModel.courseId,
+        lessonId: remoteModel.lessonId,
+      );
+
+      // Une modification locale pas encore synchronisée est prioritaire :
+      // sinon on écraserait un changement que l'utilisateur vient de faire
+      // hors-ligne avec une version distante plus ancienne. Au-delà de ça,
+      // "dernière écriture gagne" sur updatedAt.
+      final localIsAuthoritative = localModel != null &&
+          (localModel.pendingSync || localModel.updatedAt.isAfter(remoteModel.updatedAt));
+
+      if (!localIsAuthoritative) {
+        await local.save(remoteModel);
+      }
+    }
+  }
 }

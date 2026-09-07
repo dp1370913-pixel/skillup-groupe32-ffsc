@@ -1,12 +1,14 @@
 import 'dart:async';
 
 import '../../core/connectivity/connectivity_service.dart';
+import '../../domain/entities/app_user.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../domain/repositories/progress_repository.dart';
 
-/// Déclenche `ProgressRepository.synchronize()` automatiquement :
-/// - dès que le réseau revient,
-/// - dès qu'un utilisateur se connecte,
+/// Déclenche la synchronisation automatiquement :
+/// - dès que le réseau revient : pousse les changements locaux en attente,
+/// - dès qu'un utilisateur se connecte : rapatrie d'abord sa progression
+///   distante (nouvel appareil / réinstallation), puis pousse le reste,
 /// - une fois au démarrage (au cas où l'app est lancée déjà en ligne
 ///   avec une session active et des entrées en attente d'un run précédent).
 ///
@@ -18,7 +20,7 @@ class ProgressSyncCoordinator {
   final ConnectivityService connectivityService;
 
   StreamSubscription<bool>? _connectivitySub;
-  StreamSubscription<dynamic>? _authSub;
+  StreamSubscription<AppUser?>? _authSub;
 
   ProgressSyncCoordinator({
     required this.progressRepository,
@@ -32,10 +34,23 @@ class ProgressSyncCoordinator {
     });
 
     _authSub = authRepository.authStateChanges.listen((user) {
-      if (user != null) _trySync();
+      if (user != null) _tryPullThenSync();
     });
 
-    _trySync();
+    if (authRepository.currentUser != null) {
+      _tryPullThenSync();
+    } else {
+      _trySync();
+    }
+  }
+
+  Future<void> _tryPullThenSync() async {
+    try {
+      await progressRepository.pullFromRemote();
+    } catch (_) {
+      // Idem synchronize() : on retentera au prochain déclencheur.
+    }
+    await _trySync();
   }
 
   Future<void> _trySync() async {

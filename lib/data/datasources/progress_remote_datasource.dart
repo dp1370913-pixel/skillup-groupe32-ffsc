@@ -9,6 +9,11 @@ import '../models/progress_model.dart';
 /// de Firestore.
 abstract class ProgressRemoteDataSource {
   Future<void> push({required String uid, required ProgressModel model});
+
+  /// Toute la progression connue de Firestore pour cet utilisateur, tous
+  /// cours confondus. Utilisé pour rapatrier l'état d'un nouvel appareil
+  /// (voir [ProgressRepositoryImpl.pullFromRemote]).
+  Future<List<ProgressModel>> fetchAll({required String uid});
 }
 
 /// Implémentation Firestore.
@@ -33,5 +38,23 @@ class FirestoreProgressRemoteDataSource implements ProgressRemoteDataSource {
         .collection('progress')
         .doc(model.lessonId)
         .set(model.toFirestore(), SetOptions(merge: true));
+  }
+
+  @override
+  Future<List<ProgressModel>> fetchAll({required String uid}) async {
+    // Pas de collectionGroup ici : "progress" existe sous chaque
+    // utilisateur, un collectionGroup sans filtre ramènerait celle des
+    // autres. On parcourt donc courses/{courseId}/progress un par un.
+    final coursesSnap =
+        await _firestore.collection('users').doc(uid).collection('courses').get();
+
+    final result = <ProgressModel>[];
+    for (final courseDoc in coursesSnap.docs) {
+      final progressSnap = await courseDoc.reference.collection('progress').get();
+      for (final doc in progressSnap.docs) {
+        result.add(ProgressModel.fromFirestore(doc, courseId: courseDoc.id));
+      }
+    }
+    return result;
   }
 }

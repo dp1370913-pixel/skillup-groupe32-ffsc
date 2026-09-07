@@ -1,0 +1,31 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Contenu pédagogique : lecture publique pour tout utilisateur connecté,
+    // écriture réservée (personne côté client — gérée manuellement / back-office).
+    match /courses/{courseId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+
+      match /lessons/{lessonId} {
+        allow read: if request.auth != null;
+        allow write: if false;
+      }
+    }
+
+    // Progression : chaque utilisateur ne peut lire/écrire que la sienne.
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+
+      match /courses/{courseId} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+
+        match /progress/{lessonId} {
+          allow read, write: if request.auth != null && request.auth.uid == uid;
+        }
+      }
+    }
+  }
+}

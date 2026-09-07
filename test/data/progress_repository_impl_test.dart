@@ -33,14 +33,19 @@ class FakeAuthRepository implements AuthRepository {
   Future<void> signOut() => throw UnimplementedError();
 }
 
-/// Remplace Firestore : enregistre juste ce qui a été poussé.
+/// Remplace Firestore : enregistre juste ce qui a été poussé, et renvoie
+/// des entrées prédéfinies pour simuler ce qui existerait déjà côté serveur.
 class FakeProgressRemoteDataSource implements ProgressRemoteDataSource {
   final List<({String uid, ProgressModel model})> pushed = [];
+  List<ProgressModel> remoteEntries = const [];
 
   @override
   Future<void> push({required String uid, required ProgressModel model}) async {
     pushed.add((uid: uid, model: model));
   }
+
+  @override
+  Future<List<ProgressModel>> fetchAll({required String uid}) async => remoteEntries;
 }
 
 void main() {
@@ -120,5 +125,59 @@ void main() {
 
     expect(remote.pushed, isEmpty);
     expect(local.getPendingSync(), hasLength(1));
+  });
+
+  test('pullFromRemote() rapatrie une entrée absente en local', () async {
+    final local = ProgressLocalDataSource();
+    final remote = FakeProgressRemoteDataSource()
+      ..remoteEntries = [
+        ProgressModel(
+          courseId: 'course-1',
+          lessonId: 'lesson-1',
+          completed: true,
+          updatedAt: DateTime(2026, 1, 1),
+        ),
+      ];
+    final repo = ProgressRepositoryImpl(
+      local: local,
+      remote: remote,
+      authRepository: FakeAuthRepository(user: const AppUser(uid: 'u1', email: 'a@b.com')),
+    );
+
+    await repo.pullFromRemote();
+
+    final progress = repo.getCourseProgress('course-1');
+    expect(progress, hasLength(1));
+    expect(progress.single.completed, isTrue);
+  });
+
+  test('pullFromRemote() ne remplace pas une modification locale non synchronisée', () async {
+    final local = ProgressLocalDataSource();
+    final remote = FakeProgressRemoteDataSource()
+      ..remoteEntries = [
+        ProgressModel(
+          courseId: 'course-1',
+          lessonId: 'lesson-1',
+          completed: false,
+          updatedAt: DateTime(2020, 1, 1),
+        ),
+      ];
+    final repo = ProgressRepositoryImpl(
+      local: local,
+      remote: remote,
+      authRepository: FakeAuthRepository(user: const AppUser(uid: 'u1', email: 'a@b.com')),
+    );
+
+    // Modification locale plus récente, pas encore synchronisée.
+    await repo.setLessonCompleted(
+      courseId: 'course-1',
+      lessonId: 'lesson-1',
+      completed: true,
+    );
+
+    await repo.pullFromRemote();
+
+    final progress = repo.getCourseProgress('course-1').single;
+    expect(progress.completed, isTrue, reason: 'la version locale non synchronisée doit gagner');
   });
 }

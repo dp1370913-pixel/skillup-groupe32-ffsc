@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../data/datasources/auth_remote_datasource.dart';
 import '../../data/datasources/course_remote_datasource.dart';
+import '../../data/repositories/auth_repository_impl.dart';
 import '../../data/repositories/course_repository_impl.dart';
 import '../../domain/entities/course.dart';
 import 'widgets/course_tile.dart';
@@ -115,6 +117,11 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
 class _CoursesHeader extends StatelessWidget {
   const _CoursesHeader();
 
+  Future<void> _signOut() async {
+    final authRepo = AuthRepositoryImpl(remote: AuthRemoteDataSource());
+    await authRepo.signOut();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -122,16 +129,30 @@ class _CoursesHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'SkillUp',
-            style: GoogleFonts.fraunces(
-              color: AppColors.moss,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.6,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'SkillUp',
+                  style: GoogleFonts.fraunces(
+                    color: AppColors.moss,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.6,
+                  ),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Se déconnecter',
+                onPressed: _signOut,
+                icon: const Icon(
+                  Icons.logout_rounded,
+                  color: AppColors.forestMuted,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 2),
           Text(
             'Mes cours',
             style: GoogleFonts.fraunces(

@@ -18,6 +18,7 @@ import 'domain/repositories/auth_repository.dart';
 import 'domain/repositories/progress_repository.dart';
 import 'firebase_options.dart';
 import 'presentation/auth/login_screen.dart';
+import 'presentation/courses/course_detail_screen.dart';
 import 'presentation/courses/courses_list_screen.dart';
 import 'presentation/progress/progress_scope.dart';
 
@@ -86,9 +87,10 @@ class MyApp extends StatelessWidget {
 
             return CoursesListScreen(
               onCourseSelected: (course) {
-                // Placeholder : brancher l'écran détail ici plus tard.
-                debugPrint(
-                  'Cours sélectionné : ${course.id} — ${course.title}',
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => CourseDetailScreen(course: course),
+                  ),
                 );
               },
             );

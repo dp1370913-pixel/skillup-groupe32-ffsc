@@ -3,11 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../data/datasources/auth_remote_datasource.dart';
 import '../../data/datasources/course_remote_datasource.dart';
-import '../../data/repositories/auth_repository_impl.dart';
 import '../../data/repositories/course_repository_impl.dart';
 import '../../domain/entities/course.dart';
+import '../../domain/entities/course_progress.dart';
+import '../../domain/repositories/progress_repository.dart';
+import '../progress/progress_scope.dart';
 import 'widgets/course_tile.dart';
 
 /// Écran Liste des cours — instanciation directe de [CourseRepositoryImpl]
@@ -29,11 +30,42 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
 
   late Future<List<Course>> _coursesFuture = _repo.getCourses();
 
+  /// Progression par cours (pourcentage + jalons), calculée une fois les
+  /// cours et leurs leçons chargés. `null` tant qu'elle n'a pas encore été
+  /// déclenchée pour le lot de cours courant (voir [build]).
+  Future<Map<String, CourseProgress>>? _progressFuture;
+
   Future<void> _refresh() async {
     setState(() {
       _coursesFuture = _repo.getCourses();
+      _progressFuture = null;
     });
     await _coursesFuture;
+  }
+
+  /// Pour chaque cours : récupère ses leçons (nombre total d'étapes) puis
+  /// calcule (pourcentage / jalons) à partir de la progression déjà connue
+  /// en local ([ProgressRepository.getCourseProgress] est synchrone — pas
+  /// besoin d'attendre Firestore).
+  Future<Map<String, CourseProgress>> _loadCourseProgress(
+    List<Course> courses,
+    ProgressRepository progressRepository,
+  ) async {
+    final entries = await Future.wait(
+      courses.map((course) async {
+        final lessons = await _repo.getLessonsForCourse(course.id);
+        final progress = progressRepository.getCourseProgress(course.id);
+        return MapEntry(
+          course.id,
+          CourseProgress.compute(
+            courseId: course.id,
+            lessons: lessons,
+            progress: progress,
+          ),
+        );
+      }),
+    );
+    return Map.fromEntries(entries);
   }
 
   String _friendlyErrorMessage(Object error) {
@@ -83,23 +115,45 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
                     return const _CoursesEmpty();
                   }
 
+                  // Déclenché une fois par lot de cours chargé (voir
+                  // _refresh pour la remise à zéro) : ProgressScope.of a
+                  // besoin du BuildContext, donc c'est fait ici plutôt
+                  // qu'en initState.
+                  _progressFuture ??= _loadCourseProgress(
+                    courses,
+                    ProgressScope.of(context),
+                  );
+
                   return RefreshIndicator(
                     color: AppColors.moss,
                     backgroundColor: AppColors.sand,
                     onRefresh: _refresh,
-                    child: ListView.separated(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-                      itemCount: courses.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        final course = courses[index];
-                        return CourseTile(
-                          course: course,
-                          index: index,
-                          onTap: widget.onCourseSelected == null
-                              ? null
-                              : () => widget.onCourseSelected!(course),
+                    child: FutureBuilder<Map<String, CourseProgress>>(
+                      future: _progressFuture,
+                      builder: (context, progressSnapshot) {
+                        // Pas d'erreur explicite ici : les tuiles s'affichent
+                        // simplement sans barre de progression si le calcul
+                        // échoue (`progressByCourse` reste vide), plutôt que
+                        // de bloquer toute la liste des cours pour ça.
+                        final progressByCourse =
+                            progressSnapshot.data ?? const <String, CourseProgress>{};
+
+                        return ListView.separated(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+                          itemCount: courses.length,
+                          separatorBuilder: (_, _) => const SizedBox(height: 12),
+                          itemBuilder: (context, index) {
+                            final course = courses[index];
+                            return CourseTile(
+                              course: course,
+                              index: index,
+                              progress: progressByCourse[course.id],
+                              onTap: widget.onCourseSelected == null
+                                  ? null
+                                  : () => widget.onCourseSelected!(course),
+                            );
+                          },
                         );
                       },
                     ),
@@ -117,11 +171,6 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
 class _CoursesHeader extends StatelessWidget {
   const _CoursesHeader();
 
-  Future<void> _signOut() async {
-    final authRepo = AuthRepositoryImpl(remote: AuthRemoteDataSource());
-    await authRepo.signOut();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -129,30 +178,16 @@ class _CoursesHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'SkillUp',
-                  style: GoogleFonts.fraunces(
-                    color: AppColors.moss,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.6,
-                  ),
-                ),
-              ),
-              IconButton(
-                tooltip: 'Se déconnecter',
-                onPressed: _signOut,
-                icon: const Icon(
-                  Icons.logout_rounded,
-                  color: AppColors.forestMuted,
-                ),
-              ),
-            ],
+          Text(
+            'SkillUp',
+            style: GoogleFonts.fraunces(
+              color: AppColors.moss,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.6,
+            ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 6),
           Text(
             'Mes cours',
             style: GoogleFonts.fraunces(

@@ -30,9 +30,14 @@ Future<void> main() async {
   Hive.registerAdapter(ProgressModelAdapter());
   await ProgressLocalDataSource.openBox();
 
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
-  final authRepository = AuthRepositoryImpl(remote: AuthRemoteDataSource());
+  final authRepository = AuthRepositoryImpl(
+    remote: AuthRemoteDataSource(),
+  );
+
   final progressRepository = ProgressRepositoryImpl(
     local: ProgressLocalDataSource(),
     remote: FirestoreProgressRemoteDataSource(),
@@ -78,7 +83,9 @@ class MyApp extends StatelessWidget {
               return const Scaffold(
                 backgroundColor: AppColors.sand,
                 body: Center(
-                  child: CircularProgressIndicator(color: AppColors.moss),
+                  child: CircularProgressIndicator(
+                    color: AppColors.moss,
+                  ),
                 ),
               );
             }
@@ -91,7 +98,9 @@ class MyApp extends StatelessWidget {
               onCourseSelected: (course) {
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (_) => CourseDetailScreen(course: course),
+                    builder: (_) => CourseDetailScreen(
+                      course: course,
+                    ),
                   ),
                 );
               },

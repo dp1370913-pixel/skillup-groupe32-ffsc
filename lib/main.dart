@@ -14,6 +14,7 @@ import 'data/repositories/progress_repository_impl.dart';
 import 'data/repositories/progress_sync_coordinator.dart';
 import 'domain/repositories/progress_repository.dart';
 import 'firebase_options.dart';
+import 'presentation/courses/course_detail_screen.dart';
 import 'presentation/courses/courses_list_screen.dart';
 import 'presentation/progress/progress_scope.dart';
 
@@ -24,9 +25,14 @@ Future<void> main() async {
   Hive.registerAdapter(ProgressModelAdapter());
   await ProgressLocalDataSource.openBox();
 
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
-  final authRepository = AuthRepositoryImpl(remote: AuthRemoteDataSource());
+  final authRepository = AuthRepositoryImpl(
+    remote: AuthRemoteDataSource(),
+  );
+
   final progressRepository = ProgressRepositoryImpl(
     local: ProgressLocalDataSource(),
     remote: FirestoreProgressRemoteDataSource(),
@@ -43,7 +49,10 @@ Future<void> main() async {
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key, required this.progressRepository});
+  const MyApp({
+    super.key,
+    required this.progressRepository,
+  });
 
   final ProgressRepository progressRepository;
 
@@ -56,11 +65,17 @@ class MyApp extends StatelessWidget {
         theme: AppTheme.light,
         home: CoursesListScreen(
           onCourseSelected: (course) {
-            // Placeholder : brancher l'écran détail ici plus tard.
-            debugPrint('Cours sélectionné : ${course.id} — ${course.title}');
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => CourseDetailScreen(
+                  course: course,
+                ),
+              ),
+            );
           },
         ),
       ),
     );
   }
 }
+

@@ -13,7 +13,7 @@ class ProgressMilestone {
 /// Résumé de progression d'un utilisateur sur un [Course] : pourcentage
 /// global et jalons atteints.
 ///
-/// Formule : (nombre d'étapes [Lesson] dont [Progress.isCompleted] est vrai
+/// Formule : (nombre d'étapes [Lesson] dont [Progress.completed] est vrai
 /// / nombre total d'étapes) * 100. Une leçon sans entrée de progression
 /// connue est considérée comme non terminée.
 ///
@@ -39,8 +39,7 @@ class CourseProgress {
   /// (évite une division par zéro plutôt que de renvoyer NaN).
   double get percentage => totalSteps == 0 ? 0 : (completedSteps / totalSteps) * 100;
 
-  /// Même valeur que [percentage], normalisée entre 0.0 et 1.0, prête à
-  /// être branchée sur un [LinearProgressIndicator].
+  /// Même valeur que [percentage], normalisée entre 0.0 et 1.0.
   double get ratio => totalSteps == 0 ? 0 : completedSteps / totalSteps;
 
   bool get isComplete => totalSteps > 0 && completedSteps == totalSteps;
@@ -55,7 +54,7 @@ class CourseProgress {
     List<int> milestoneThresholds = defaultThresholds,
   }) {
     final completedLessonIds = progress
-        .where((p) => p.isCompleted)
+        .where((p) => p.completed)
         .map((p) => p.lessonId)
         .toSet();
 

@@ -75,25 +75,37 @@ class _CoursesListScreenState extends State<CoursesListScreen> with RouteAware {
   /// calcule (pourcentage / jalons) à partir de la progression déjà connue
   /// en local ([ProgressRepository.getCourseProgress] est synchrone — pas
   /// besoin d'attendre Firestore).
+  ///
+  /// Chaque cours est chargé dans son propre try/catch : un échec isolé
+  /// (ex. leçons illisibles pour un cours) exclut seulement ce cours du
+  /// résultat, plutôt que de faire échouer tout le lot via `Future.wait`
+  /// et priver tous les autres cours de leur barre de progression.
   Future<Map<String, CourseProgress>> _loadCourseProgress(
     List<Course> courses,
     ProgressRepository progressRepository,
   ) async {
     final entries = await Future.wait(
       courses.map((course) async {
-        final lessons = await _repo.getLessonsForCourse(course.id);
-        final progress = progressRepository.getCourseProgress(course.id);
-        return MapEntry(
-          course.id,
-          CourseProgress.compute(
-            courseId: course.id,
-            lessons: lessons,
-            progress: progress,
-          ),
-        );
+        try {
+          final lessons = await _repo.getLessonsForCourse(course.id);
+          final progress = progressRepository.getCourseProgress(course.id);
+          return MapEntry(
+            course.id,
+            CourseProgress.compute(
+              courseId: course.id,
+              lessons: lessons,
+              progress: progress,
+            ),
+          );
+        } catch (error) {
+          debugPrint(
+            'CoursesListScreen: échec progression pour ${course.id} — $error',
+          );
+          return null;
+        }
       }),
     );
-    return Map.fromEntries(entries);
+    return Map.fromEntries(entries.whereType<MapEntry<String, CourseProgress>>());
   }
 
   String _friendlyErrorMessage(Object error) {

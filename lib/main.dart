@@ -74,6 +74,7 @@ class MyApp extends StatelessWidget {
       repository: progressRepository,
       child: MaterialApp(
         title: 'SkillUp',
+        debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
         navigatorObservers: [appRouteObserver],
         home: StreamBuilder<AppUser?>(

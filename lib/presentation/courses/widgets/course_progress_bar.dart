@@ -4,10 +4,11 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../domain/entities/course_progress.dart';
+import 'step_trail.dart';
 
-/// Barre de progression linéaire + badges de jalons pour un cours.
+/// Chemin d'étapes ([StepTrail]) + badges de jalons pour un cours.
 ///
-/// Responsive : la barre occupe tout l'espace disponible (`Expanded`), le
+/// Responsive : le chemin occupe tout l'espace disponible (`Expanded`), le
 /// pourcentage reste sur la même ligne, et les badges de jalons passent à
 /// la ligne automatiquement (`Wrap`) si la largeur manque — utile sur les
 /// petits écrans ou avec une échelle de texte agrandie.
@@ -30,14 +31,10 @@ class CourseProgressBar extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(999),
-                child: LinearProgressIndicator(
-                  value: progress.ratio,
-                  minHeight: 6,
-                  backgroundColor: AppColors.sandMuted,
-                  color: progress.isComplete ? AppColors.gold : AppColors.moss,
-                ),
+              child: StepTrail(
+                completedSteps: progress.completedSteps,
+                totalSteps: progress.totalSteps,
+                isComplete: progress.isComplete,
               ),
             ),
             const SizedBox(width: 10),
@@ -53,14 +50,30 @@ class CourseProgressBar extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 8),
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: [
-            for (final milestone in progress.milestones)
-              _MilestoneBadge(milestone: milestone),
-          ],
-        ),
+        MilestonesRow(milestones: progress.milestones),
+      ],
+    );
+  }
+}
+
+/// Rangée de badges de jalons, réutilisable indépendamment de
+/// [CourseProgressBar] (ex. écran détail d'un cours).
+///
+/// Responsive : passe à la ligne automatiquement (`Wrap`) si la largeur
+/// manque — utile sur les petits écrans ou avec une échelle de texte
+/// agrandie.
+class MilestonesRow extends StatelessWidget {
+  final List<ProgressMilestone> milestones;
+
+  const MilestonesRow({super.key, required this.milestones});
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: [
+        for (final milestone in milestones) _MilestoneBadge(milestone: milestone),
       ],
     );
   }

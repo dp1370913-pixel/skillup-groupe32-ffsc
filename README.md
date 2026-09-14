@@ -20,17 +20,18 @@ Stratégie *offline-first* : toute mise à jour de progression est écrite immé
 
 Affiche, pour chaque cours de l'écran « Liste des cours », un pourcentage global de complétion et des badges de jalons (25 %, 50 %, 75 %, 100 %).
 
-**Formule** : `(nombre d'étapes validées / nombre total d'étapes) * 100`, où une « étape » est une [`Lesson`](lib/domain/entities/lesson.dart) et « validée » signifie qu'une entrée [`Progress`](lib/domain/entities/progress.dart) existe pour elle avec `completed == true` (exposé aussi via le getter `isCompleted`, plus explicite côté logique métier). Une leçon sans entrée de progression connue est considérée comme non terminée.
+**Formule** : `(nombre d'étapes validées / nombre total d'étapes) * 100`, où une « étape » est une [`Lesson`](lib/domain/entities/lesson.dart) et « validée » signifie qu'une entrée [`Progress`](lib/domain/entities/progress.dart) existe pour elle avec `completed == true`. Une leçon sans entrée de progression connue est considérée comme non terminée.
 
 ### Fichiers
 
 | Fichier | Rôle |
 | --- | --- |
-| `lib/domain/entities/progress.dart` | Getter `isCompleted` (alias de `completed`) sur l'entité existante. |
-| `lib/domain/entities/course_progress.dart` | Entité pure `CourseProgress` (`completedSteps`, `totalSteps`, `percentage`, `ratio`, `isComplete`, `milestones`) + factory `CourseProgress.compute(courseId, lessons, progress)` qui applique la formule ci-dessus et calcule les 4 jalons par défaut (`CourseProgress.defaultThresholds = [25, 50, 75, 100]`). Aucune dépendance à Flutter/Hive/Firestore. |
-| `lib/presentation/courses/widgets/course_progress_bar.dart` | Widget `CourseProgressBar` : `LinearProgressIndicator` (rempli via `CourseProgress.ratio`) + pourcentage arrondi, et une rangée de badges de jalons (`Wrap`, donc responsive — les badges passent à la ligne si l'espace manque). Un badge atteint est plein (icône `check_circle`, couleur mousse) ; un badge non atteint reste en contour. |
+| `lib/domain/entities/course_progress.dart` | Entité pure `CourseProgress` (`completedSteps`, `totalSteps`, `percentage`, `ratio`, `isComplete`, `milestones`) + factory `CourseProgress.compute(courseId, lessons, progress)` qui applique la formule ci-dessus (via `Progress.completed`) et calcule les 4 jalons par défaut (`CourseProgress.defaultThresholds = [25, 50, 75, 100]`). Aucune dépendance à Flutter/Hive/Firestore. |
+| `lib/presentation/courses/widgets/step_trail.dart` | Widget `StepTrail` : un segment par leçon (rempli en mousse, ou en or si le cours est terminé), pour un visuel « chemin d'étapes » plutôt qu'une barre de remplissage continue. |
+| `lib/presentation/courses/widgets/course_progress_bar.dart` | Widget `CourseProgressBar` : `StepTrail` + pourcentage arrondi, et `MilestonesRow` (widget public, réutilisable) pour les badges de jalons — responsive (`Wrap`), passent à la ligne si l'espace manque. Un badge atteint est plein (icône `check_circle`, couleur mousse) ; un badge non atteint reste en contour. |
 | `lib/presentation/courses/widgets/course_tile.dart` | Prend un paramètre optionnel `progress: CourseProgress?` et affiche `CourseProgressBar` sous le titre/la description, alignée avec eux. `null` → aucune barre affichée (cours sans progression chargée). |
-| `lib/presentation/courses/courses_list_screen.dart` | `_CoursesListScreenState` calcule la progression de tous les cours visibles une fois qu'ils sont chargés : pour chaque cours, récupère ses leçons via `CourseRepository.getLessonsForCourse` (Firestore) et sa progression via `ProgressScope.of(context)` → `ProgressRepository.getCourseProgress` (Hive, synchrone), puis construit un `Map<courseId, CourseProgress>` transmis à chaque `CourseTile`. Recalculé au pull-to-refresh (`RefreshIndicator`). |
+| `lib/presentation/courses/courses_list_screen.dart` | `_CoursesListScreenState` calcule la progression de tous les cours visibles une fois qu'ils sont chargés : pour chaque cours, récupère ses leçons via `CourseRepository.getLessonsForCourse` (Firestore) et sa progression via `ProgressScope.of(context)` → `ProgressRepository.getCourseProgress` (Hive, synchrone), puis construit un `Map<courseId, CourseProgress>` transmis à chaque `CourseTile`. Recalculé au pull-to-refresh, et automatiquement au retour depuis l'écran détail (voir `RouteAware`/`appRouteObserver` ci-dessous). |
+| `lib/presentation/courses/course_detail_screen.dart` | Réutilise aussi `CourseProgress.compute` + `StepTrail` + `MilestonesRow` pour rester cohérent visuellement avec la liste. |
 | `test/domain/course_progress_test.dart` | Tests unitaires de `CourseProgress.compute` : 0 %, 25 %, 100 %, leçon marquée `completed: false`, cours sans leçon (pas de division par zéro). |
 
 ### Points d'attention pour la suite
@@ -38,7 +39,7 @@ Affiche, pour chaque cours de l'écran « Liste des cours », un pourcentage glo
 - Le calcul repose entièrement sur la progression **locale** (Hive), toujours disponible hors-ligne — pas d'appel réseau supplémentaire au-delà du chargement des leçons.
 - Si le calcul de progression échoue pour une raison quelconque, l'écran affiche quand même la liste des cours (sans barre) plutôt que de bloquer toute la page.
 - Les seuils de jalons (`milestoneThresholds`) sont un paramètre optionnel de `CourseProgress.compute` : personnalisables par cours si besoin plus tard (ex. cours avec un seul jalon à 100 %).
-- Pas de mise à jour « live » après une leçon marquée terminée sur un autre écran (pas encore de state management partagé côté équipe, voir `progress_scope.dart`) : un retour sur l'écran « Liste des cours » ou un pull-to-refresh est nécessaire pour rafraîchir les barres.
+- La liste des cours se met à jour automatiquement au retour depuis l'écran détail (bouton retour de l'app **ou** bouton retour du navigateur sur le web), via `lib/core/navigation/route_observer.dart` (`RouteObserver`/`RouteAware`) — plus besoin de pull-to-refresh manuel pour voir une leçon fraîchement cochée.
 
 ## Mise en route
 

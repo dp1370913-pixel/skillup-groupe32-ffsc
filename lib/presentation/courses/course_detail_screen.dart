@@ -5,10 +5,13 @@ import '../../core/theme/app_colors.dart';
 import '../../data/datasources/course_remote_datasource.dart';
 import '../../data/repositories/course_repository_impl.dart';
 import '../../domain/entities/course.dart';
+import '../../domain/entities/course_progress.dart';
 import '../../domain/entities/lesson.dart';
 import '../../domain/entities/progress.dart';
 import '../../domain/repositories/progress_repository.dart';
 import '../progress/progress_scope.dart';
+import 'widgets/course_progress_bar.dart';
+import 'widgets/step_trail.dart';
 
 class CourseDetailScreen extends StatefulWidget {
   final Course course;
@@ -69,25 +72,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     }
   }
 
-  double _calculateProgress(
-    List<Lesson> lessons,
-    List<Progress> progressList,
-  ) {
-    if (lessons.isEmpty) {
-      return 0;
-    }
-
-    var completedCount = 0;
-
-    for (final lesson in lessons) {
-      if (_isLessonCompleted(progressList, lesson.id)) {
-        completedCount++;
-      }
-    }
-
-    return completedCount / lessons.length;
-  }
-
   @override
   Widget build(BuildContext context) {
     final progressRepository = _getProgressRepository(context);
@@ -144,9 +128,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
           final progressList =
               progressRepository.getCourseProgress(widget.course.id);
 
-          final progress = _calculateProgress(
-            lessons,
-            progressList,
+          final progress = CourseProgress.compute(
+            courseId: widget.course.id,
+            lessons: lessons,
+            progress: progressList,
           );
 
           return SingleChildScrollView(
@@ -194,7 +179,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      '${(progress * 100).round()} %',
+                      '${progress.percentage.round()} %',
                       style: GoogleFonts.fraunces(
                         color: AppColors.forest,
                         fontSize: 20,
@@ -202,7 +187,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                       ),
                     ),
                     Text(
-                      '${lessons.where((lesson) => _isLessonCompleted(progressList, lesson.id)).length}/${lessons.length} leçons',
+                      '${progress.completedSteps}/${progress.totalSteps} leçons',
                       style: GoogleFonts.manrope(
                         color: AppColors.ink.withValues(alpha: 0.7),
                         fontSize: 14,
@@ -213,16 +198,15 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
 
                 const SizedBox(height: 8),
 
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    minHeight: 10,
-                    backgroundColor:
-                        AppColors.ink.withValues(alpha: 0.10),
-                    color: AppColors.moss,
-                  ),
+                StepTrail(
+                  completedSteps: progress.completedSteps,
+                  totalSteps: progress.totalSteps,
+                  isComplete: progress.isComplete,
                 ),
+
+                const SizedBox(height: 14),
+
+                MilestonesRow(milestones: progress.milestones),
 
                 const SizedBox(height: 28),
 

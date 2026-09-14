@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../core/navigation/route_observer.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/datasources/course_remote_datasource.dart';
 import '../../data/repositories/course_repository_impl.dart';
@@ -15,17 +16,19 @@ import 'widgets/course_tile.dart';
 /// (conception SkillUp §4–5), sans injection de dépendances.
 class CoursesListScreen extends StatefulWidget {
   final ValueChanged<Course>? onCourseSelected;
+  final VoidCallback? onLogout;
 
   const CoursesListScreen({
     super.key,
     this.onCourseSelected,
+    this.onLogout,
   });
 
   @override
   State<CoursesListScreen> createState() => _CoursesListScreenState();
 }
 
-class _CoursesListScreenState extends State<CoursesListScreen> {
+class _CoursesListScreenState extends State<CoursesListScreen> with RouteAware {
   final _repo = CourseRepositoryImpl(remote: CourseRemoteDataSource());
 
   late Future<List<Course>> _coursesFuture = _repo.getCourses();
@@ -34,6 +37,31 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
   /// cours et leurs leçons chargés. `null` tant qu'elle n'a pas encore été
   /// déclenchée pour le lot de cours courant (voir [build]).
   Future<Map<String, CourseProgress>>? _progressFuture;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute<dynamic>) {
+      appRouteObserver.subscribe(this, route);
+    }
+  }
+
+  @override
+  void dispose() {
+    appRouteObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  /// Appelé par [appRouteObserver] quand une route poussée au-dessus de cet
+  /// écran (l'écran détail d'un cours) est dépilée et qu'on redevient
+  /// visible — peu importe comment (flèche de l'app, bouton "retour" du
+  /// navigateur sur le web...). L'utilisateur a pu cocher des leçons
+  /// entre-temps : on recharge la progression pour le refléter.
+  @override
+  void didPopNext() {
+    _refresh();
+  }
 
   Future<void> _refresh() async {
     setState(() {
@@ -92,7 +120,7 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const _CoursesHeader(),
+            _CoursesHeader(onLogout: widget.onLogout),
             Expanded(
               child: FutureBuilder<List<Course>>(
                 future: _coursesFuture,
@@ -169,43 +197,58 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
 }
 
 class _CoursesHeader extends StatelessWidget {
-  const _CoursesHeader();
+  final VoidCallback? onLogout;
+
+  const _CoursesHeader({this.onLogout});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'SkillUp',
-            style: GoogleFonts.fraunces(
-              color: AppColors.moss,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.6,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'SkillUp',
+                  style: GoogleFonts.fraunces(
+                    color: AppColors.moss,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.6,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Mes cours',
+                  style: GoogleFonts.fraunces(
+                    color: AppColors.forest,
+                    fontSize: 32,
+                    fontWeight: FontWeight.w600,
+                    height: 1.1,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Choisis un parcours et avance à ton rythme.',
+                  style: GoogleFonts.manrope(
+                    color: AppColors.ink.withValues(alpha: 0.72),
+                    fontSize: 15,
+                    height: 1.4,
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            'Mes cours',
-            style: GoogleFonts.fraunces(
-              color: AppColors.forest,
-              fontSize: 32,
-              fontWeight: FontWeight.w600,
-              height: 1.1,
+          if (onLogout != null)
+            IconButton(
+              onPressed: onLogout,
+              tooltip: 'Se déconnecter',
+              icon: const Icon(Icons.logout_rounded, color: AppColors.forest),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Choisis un parcours et avance à ton rythme.',
-            style: GoogleFonts.manrope(
-              color: AppColors.ink.withValues(alpha: 0.72),
-              fontSize: 15,
-              height: 1.4,
-            ),
-          ),
         ],
       ),
     );

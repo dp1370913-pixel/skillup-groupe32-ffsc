@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'core/connectivity/connectivity_service.dart';
+import 'core/navigation/route_observer.dart';
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
 import 'data/datasources/auth_remote_datasource.dart';
@@ -69,6 +70,7 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         title: 'SkillUp',
         theme: AppTheme.light,
+        navigatorObservers: [appRouteObserver],
         home: StreamBuilder<AppUser?>(
           stream: authRepository.authStateChanges,
           builder: (context, snapshot) {
@@ -92,6 +94,11 @@ class MyApp extends StatelessWidget {
                     builder: (_) => CourseDetailScreen(course: course),
                   ),
                 );
+              },
+              onLogout: () {
+                authRepository.signOut().catchError((error) {
+                  debugPrint('Déconnexion : échec — $error');
+                });
               },
             );
           },

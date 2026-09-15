@@ -30,13 +30,9 @@ SkillUp permet à un utilisateur de créer un compte, parcourir des cours, coche
 
 ## Captures d'écran
 
-| Connexion | Liste des cours |
-| --- | --- |
-| ![Écran de connexion](docs/connexion.png) | ![Liste des cours avec progression](docs/liste-cours.png) |
-
-| Détail d'un cours |
-| --- |
-| ![Détail d'un cours avec chemin de progression](docs/detail-cours.png) |
+| Connexion | Liste des cours | Détail d'un cours |
+| --- | --- | --- |
+| ![Écran de connexion](docs/connexion.png) | ![Liste des cours avec progression](docs/liste-cours.png) | ![Détail d'un cours avec chemin de progression](docs/detail-cours.png) |
 
 ## Stack technique
 
